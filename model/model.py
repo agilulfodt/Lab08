@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from database.impianto_DAO import ImpiantoDAO
 
 '''
@@ -26,6 +28,19 @@ class Model:
         :return: lista di tuple --> (nome dell'impianto, media), es. (Impianto A, 123)
         """
         # TODO
+        lista = [] #lista di tuple
+        for impianto in self._impianti:
+            impianto.get_consumi()
+            n_consumi = 0
+            sum_consumi = 0
+            for consumo in impianto.lista_consumi:
+                if consumo.data.month == mese:
+                    n_consumi += 1
+                    sum_consumi += consumo.kwh
+            media = sum_consumi / n_consumi
+            lista.append((impianto.nome, media))
+        return lista
+
 
     def get_sequenza_ottima(self, mese:int):
         """
@@ -47,6 +62,21 @@ class Model:
     def __ricorsione(self, sequenza_parziale, giorno, ultimo_impianto, costo_corrente, consumi_settimana):
         """ Implementa la ricorsione """
         # TODO
+        if giorno == 8:
+            if self.__costo_ottimo == -1 or costo_corrente < self.__costo_ottimo:
+                self.__costo_ottimo = costo_corrente
+                self.__sequenza_ottima = sequenza_parziale.copy()
+            return
+
+        for impianto_id, consumi in consumi_settimana.items():
+            consumo_giorno = consumi[giorno - 1]
+            costo_spostamento = 0
+            if ultimo_impianto is not None and ultimo_impianto != impianto_id:
+                costo_spostamento = 5
+            nuovo_costo = costo_corrente + consumo_giorno + costo_spostamento
+            sequenza_parziale.append(impianto_id)
+            self.__ricorsione(sequenza_parziale, giorno + 1, impianto_id, nuovo_costo, consumi_settimana)
+            sequenza_parziale.pop()
 
     def __get_consumi_prima_settimana_mese(self, mese: int):
         """
@@ -54,4 +84,14 @@ class Model:
         :return: un dizionario: {id_impianto: [kwh_giorno1, ..., kwh_giorno7]}
         """
         # TODO
-
+        dizio = {}
+        for impianto in self._impianti:
+            impianto.get_consumi()
+            lista_consumi_prima_settimana = []
+            for consumo in impianto.lista_consumi:
+                if consumo.data.day <= 7 and consumo.data.month == mese:
+                    lista_consumi_prima_settimana.append(consumo.kwh)
+                elif len(lista_consumi_prima_settimana) == 7:
+                    break
+            dizio[impianto.id] = lista_consumi_prima_settimana
+        return dizio
